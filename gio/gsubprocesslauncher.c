@@ -54,7 +54,7 @@
 
 typedef GObjectClass GSubprocessLauncherClass;
 
-G_DEFINE_TYPE (GSubprocessLauncher, g_subprocess_launcher, G_TYPE_OBJECT);
+G_DEFINE_TYPE (GSubprocessLauncher, g_subprocess_launcher, G_TYPE_OBJECT)
 
 static gboolean
 verify_disposition (const gchar      *stream_name,
@@ -239,6 +239,9 @@ g_subprocess_launcher_new (GSubprocessFlags flags)
  *
  * As an alternative, you can use g_subprocess_launcher_setenv(),
  * g_subprocess_launcher_unsetenv(), etc.
+ *
+ * Pass %NULL to inherit the parent  process' environment. Pass an
+ * empty array to set an empty environment.
  *
  * On UNIX, all strings in this array can be arbitrary byte strings.
  * On Windows, they should be in UTF-8.

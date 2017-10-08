@@ -318,6 +318,13 @@ g_file_test (const gchar *filename,
              GFileTest    test)
 {
 #ifdef G_OS_WIN32
+  int attributes;
+  wchar_t *wfilename;
+#endif
+
+  g_return_val_if_fail (filename != NULL, FALSE);
+
+#ifdef G_OS_WIN32
 /* stuff missing in std vc6 api */
 #  ifndef INVALID_FILE_ATTRIBUTES
 #    define INVALID_FILE_ATTRIBUTES -1
@@ -325,8 +332,7 @@ g_file_test (const gchar *filename,
 #  ifndef FILE_ATTRIBUTE_DEVICE
 #    define FILE_ATTRIBUTE_DEVICE 64
 #  endif
-  int attributes;
-  wchar_t *wfilename = g_utf8_to_utf16 (filename, -1, NULL, NULL, NULL);
+  wfilename = g_utf8_to_utf16 (filename, -1, NULL, NULL, NULL);
 
   if (wfilename == NULL)
     return FALSE;
@@ -1349,7 +1355,7 @@ wrap_g_open (const gchar *filename,
 }
 
 /**
- * g_mkdtemp_full:
+ * g_mkdtemp_full: (skip)
  * @tmpl: (type filename): template directory name
  * @mode: permissions to create the temporary directory with
  *
@@ -1358,12 +1364,16 @@ wrap_g_open (const gchar *filename,
  *
  * The parameter is a string that should follow the rules for
  * mkdtemp() templates, i.e. contain the string "XXXXXX".
- * g_mkdtemp() is slightly more flexible than mkdtemp() in that the
+ * g_mkdtemp_full() is slightly more flexible than mkdtemp() in that the
  * sequence does not have to occur at the very end of the template
  * and you can pass a @mode. The X string will be modified to form
  * the name of a directory that didn't exist. The string should be
  * in the GLib file name encoding. Most importantly, on Windows it
  * should be in UTF-8.
+ *
+ * If you are going to be creating a temporary directory inside the
+ * directory returned by g_get_tmp_dir(), you might want to use
+ * g_dir_make_tmp() instead.
  *
  * Returns: (nullable) (type filename): A pointer to @tmpl, which has been
  *     modified to hold the directory name. In case of errors, %NULL is
@@ -1382,7 +1392,7 @@ g_mkdtemp_full (gchar *tmpl,
 }
 
 /**
- * g_mkdtemp:
+ * g_mkdtemp: (skip)
  * @tmpl: (type filename): template directory name
  *
  * Creates a temporary directory. See the mkdtemp() documentation
@@ -1391,11 +1401,15 @@ g_mkdtemp_full (gchar *tmpl,
  * The parameter is a string that should follow the rules for
  * mkdtemp() templates, i.e. contain the string "XXXXXX".
  * g_mkdtemp() is slightly more flexible than mkdtemp() in that the
- * sequence does not have to occur at the very end of the template
- * and you can pass a @mode and additional @flags. The X string will
- * be modified to form the name of a directory that didn't exist.
+ * sequence does not have to occur at the very end of the template.
+ * The X string will be modified to form the name of a directory that
+ * didn't exist.
  * The string should be in the GLib file name encoding. Most importantly,
  * on Windows it should be in UTF-8.
+ *
+ * If you are going to be creating a temporary directory inside the
+ * directory returned by g_get_tmp_dir(), you might want to use
+ * g_dir_make_tmp() instead.
  *
  * Returns: (nullable) (type filename): A pointer to @tmpl, which has been
  *     modified to hold the directory name.  In case of errors, %NULL is
@@ -1410,7 +1424,7 @@ g_mkdtemp (gchar *tmpl)
 }
 
 /**
- * g_mkstemp_full:
+ * g_mkstemp_full: (skip)
  * @tmpl: (type filename): template filename
  * @flags: flags to pass to an open() call in addition to O_EXCL
  *     and O_CREAT, which are passed automatically
@@ -1446,7 +1460,7 @@ g_mkstemp_full (gchar *tmpl,
 }
 
 /**
- * g_mkstemp:
+ * g_mkstemp: (skip)
  * @tmpl: (type filename): template filename
  *
  * Opens a temporary file. See the mkstemp() documentation
@@ -2507,114 +2521,57 @@ g_get_current_dir (void)
 #endif /* !G_OS_WIN32 */
 }
 
+#ifdef G_OS_WIN32
 
-/* NOTE : Keep this part last to ensure nothing in this file uses thn
- * below binary compatibility versions.
- */
-#if defined (G_OS_WIN32) && !defined (_WIN64)
+/* Binary compatibility versions. Not for newly compiled code. */
 
-/* Binary compatibility versions. Will be called by code compiled
- * against quite old (pre-2.8, I think) headers only, not from more
- * recently compiled code.
- */
+_GLIB_EXTERN gboolean g_file_test_utf8         (const gchar  *filename,
+                                                GFileTest     test);
+_GLIB_EXTERN gboolean g_file_get_contents_utf8 (const gchar  *filename,
+                                                gchar       **contents,
+                                                gsize        *length,
+                                                GError      **error);
+_GLIB_EXTERN gint     g_mkstemp_utf8           (gchar        *tmpl);
+_GLIB_EXTERN gint     g_file_open_tmp_utf8     (const gchar  *tmpl,
+                                                gchar       **name_used,
+                                                GError      **error);
+_GLIB_EXTERN gchar   *g_get_current_dir_utf8   (void);
 
-#undef g_file_test
-
-gboolean
-g_file_test (const gchar *filename,
-             GFileTest    test)
-{
-  gchar *utf8_filename = g_locale_to_utf8 (filename, -1, NULL, NULL, NULL);
-  gboolean retval;
-
-  if (utf8_filename == NULL)
-    return FALSE;
-
-  retval = g_file_test_utf8 (utf8_filename, test);
-
-  g_free (utf8_filename);
-
-  return retval;
-}
-
-#undef g_file_get_contents
 
 gboolean
-g_file_get_contents (const gchar  *filename,
-                     gchar       **contents,
-                     gsize        *length,
-                     GError      **error)
+g_file_test_utf8 (const gchar *filename,
+                  GFileTest    test)
 {
-  gchar *utf8_filename = g_locale_to_utf8 (filename, -1, NULL, NULL, error);
-  gboolean retval;
-
-  if (utf8_filename == NULL)
-    return FALSE;
-
-  retval = g_file_get_contents_utf8 (utf8_filename, contents, length, error);
-
-  g_free (utf8_filename);
-
-  return retval;
+  return g_file_test (filename, test);
 }
 
-#undef g_mkstemp
-
-static gint
-wrap_libc_open (const gchar *filename,
-                int          flags,
-                int          mode)
+gboolean
+g_file_get_contents_utf8 (const gchar  *filename,
+                          gchar       **contents,
+                          gsize        *length,
+                          GError      **error)
 {
-  return open (filename, flags, mode);
+  return g_file_get_contents (filename, contents, length, error);
 }
 
 gint
-g_mkstemp (gchar *tmpl)
+g_mkstemp_utf8 (gchar *tmpl)
 {
-  /* This is the backward compatibility system codepage version,
-   * thus use normal open().
-   */
-  return get_tmp_file (tmpl, wrap_libc_open,
-		       O_RDWR | O_CREAT | O_EXCL, 0600);
+  return g_mkstemp (tmpl);
 }
-
-#undef g_file_open_tmp
 
 gint
-g_file_open_tmp (const gchar  *tmpl,
-		 gchar       **name_used,
-		 GError      **error)
+g_file_open_tmp_utf8 (const gchar  *tmpl,
+                      gchar       **name_used,
+                      GError      **error)
 {
-  gchar *utf8_tmpl = g_locale_to_utf8 (tmpl, -1, NULL, NULL, error);
-  gchar *utf8_name_used;
-  gint retval;
-
-  if (utf8_tmpl == NULL)
-    return -1;
-
-  retval = g_file_open_tmp_utf8 (utf8_tmpl, &utf8_name_used, error);
-  
-  if (retval == -1)
-    return -1;
-
-  if (name_used)
-    *name_used = g_locale_from_utf8 (utf8_name_used, -1, NULL, NULL, NULL);
-
-  g_free (utf8_name_used);
-
-  return retval;
+  return g_file_open_tmp (tmpl, name_used, error);
 }
-
-#undef g_get_current_dir
 
 gchar *
-g_get_current_dir (void)
+g_get_current_dir_utf8 (void)
 {
-  gchar *utf8_dir = g_get_current_dir_utf8 ();
-  gchar *dir = g_locale_from_utf8 (utf8_dir, -1, NULL, NULL, NULL);
-  g_free (utf8_dir);
-  return dir;
+  return g_get_current_dir ();
 }
 
 #endif
-

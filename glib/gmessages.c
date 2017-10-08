@@ -1487,7 +1487,7 @@ win32_is_pipe_tty (int fd)
   gint length;
 
   /* XXX: Remove once XP support really dropped */
-#if _WINNT_WIN32 < 0x0600
+#if _WIN32_WINNT < 0x0600
   HANDLE h_kerneldll = NULL;
   fGetFileInformationByHandleEx *GetFileInformationByHandleEx;
 #endif
@@ -1501,7 +1501,7 @@ win32_is_pipe_tty (int fd)
   /* mintty uses a pipe, in the form of \{cygwin|msys}-xxxxxxxxxxxxxxxx-ptyN-{from|to}-master */
 
   /* XXX: Remove once XP support really dropped */
-#if _WINNT_WIN32 < 0x0600
+#if _WIN32_WINNT < 0x0600
   h_kerneldll = LoadLibraryW (L"kernel32.dll");
 
   if (h_kerneldll == NULL)
@@ -1562,7 +1562,7 @@ done_query:
     g_free (info);
 
   /* XXX: Remove once XP support really dropped */
-#if _WINNT_WIN32 < 0x0600
+#if _WIN32_WINNT < 0x0600
   if (h_kerneldll != NULL)
     FreeLibrary (h_kerneldll);
 #endif
@@ -2995,20 +2995,9 @@ g_log_default_handler (const gchar   *log_domain,
 		       const gchar   *message,
 		       gpointer	      unused_data)
 {
-  const gchar *domains;
   GLogField fields[4];
   int n_fields = 0;
 
-  if ((log_level & DEFAULT_LEVELS) || (log_level >> G_LOG_LEVEL_USER_SHIFT))
-    goto emit;
-
-  domains = g_getenv ("G_MESSAGES_DEBUG");
-  if (((log_level & INFO_LEVELS) == 0) ||
-      domains == NULL ||
-      (strcmp (domains, "all") != 0 && (!log_domain || !strstr (domains, log_domain))))
-    return;
-
- emit:
   /* we can be called externally with recursion for whatever reason */
   if (log_level & G_LOG_FLAG_RECURSION)
     {

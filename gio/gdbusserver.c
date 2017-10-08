@@ -154,8 +154,7 @@ static guint _signals[LAST_SIGNAL] = {0};
 static void initable_iface_init       (GInitableIface *initable_iface);
 
 G_DEFINE_TYPE_WITH_CODE (GDBusServer, g_dbus_server, G_TYPE_OBJECT,
-                         G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE, initable_iface_init)
-                         );
+                         G_IMPLEMENT_INTERFACE (G_TYPE_INITABLE, initable_iface_init))
 
 static void
 g_dbus_server_finalize (GObject *object)
@@ -504,8 +503,9 @@ g_dbus_server_new_sync (const gchar        *address,
  * g_dbus_server_get_client_address:
  * @server: A #GDBusServer.
  *
- * Gets a D-Bus address string that can be used by clients to connect
- * to @server.
+ * Gets a
+ * [D-Bus address](https://dbus.freedesktop.org/doc/dbus-specification.html#addresses)
+ * string that can be used by clients to connect to @server.
  *
  * Returns: A D-Bus address string. Do not free, the string is owned
  * by @server.

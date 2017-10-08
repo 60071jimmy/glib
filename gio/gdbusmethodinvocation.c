@@ -92,7 +92,7 @@ struct _GDBusMethodInvocation
   gpointer         user_data;
 };
 
-G_DEFINE_TYPE (GDBusMethodInvocation, g_dbus_method_invocation, G_TYPE_OBJECT);
+G_DEFINE_TYPE (GDBusMethodInvocation, g_dbus_method_invocation, G_TYPE_OBJECT)
 
 static void
 g_dbus_method_invocation_finalize (GObject *object)
@@ -105,6 +105,8 @@ g_dbus_method_invocation_finalize (GObject *object)
   g_free (invocation->method_name);
   if (invocation->method_info)
       g_dbus_method_info_unref (invocation->method_info);
+  if (invocation->property_info)
+      g_dbus_property_info_unref (invocation->property_info);
   g_object_unref (invocation->connection);
   g_object_unref (invocation->message);
   g_variant_unref (invocation->parameters);
@@ -534,7 +536,26 @@ g_dbus_method_invocation_return_value_internal (GDBusMethodInvocation *invocatio
  * Finishes handling a D-Bus method call by returning @parameters.
  * If the @parameters GVariant is floating, it is consumed.
  *
- * It is an error if @parameters is not of the right format.
+ * It is an error if @parameters is not of the right format: it must be a tuple
+ * containing the out-parameters of the D-Bus method. Even if the method has a
+ * single out-parameter, it must be contained in a tuple. If the method has no
+ * out-parameters, @parameters may be %NULL or an empty tuple.
+ *
+ * |[<!-- language="C" -->
+ * GDBusMethodInvocation *invocation = some_invocation;
+ * g_autofree gchar *result_string = NULL;
+ * g_autoptr (GError) error = NULL;
+ *
+ * result_string = calculate_result (&error);
+ *
+ * if (error != NULL)
+ *   g_dbus_method_invocation_return_gerror (invocation, error);
+ * else
+ *   g_dbus_method_invocation_return_value (invocation,
+ *                                          g_variant_new ("(s)", result_string));
+ *
+ * /<!-- -->* Do not free @invocation here; returning a value does that *<!-- -->/
+ * ]|
  *
  * This method will take ownership of @invocation. See
  * #GDBusInterfaceVTable for more information about the ownership of

@@ -828,8 +828,13 @@ g_key_file_load_from_fd (GKeyFile       *key_file,
  * @error: return location for a #GError, or %NULL
  *
  * Loads a key file into an empty #GKeyFile structure.
- * If the file could not be loaded then @error is set to
- * either a #GFileError or #GKeyFileError.
+ *
+ * If the OS returns an error when opening or reading the file, a
+ * %G_FILE_ERROR is returned. If there is a problem parsing the file, a
+ * %G_KEY_FILE_ERROR is returned.
+ *
+ * This function will never return a %G_KEY_FILE_ERROR_NOT_FOUND error. If the
+ * @file is not found, %G_FILE_ERROR_NOENT is returned.
  *
  * Returns: %TRUE if a key file could be loaded, %FALSE otherwise
  *
@@ -967,9 +972,13 @@ g_key_file_load_from_bytes (GKeyFile       *key_file,
  *
  * This function looks for a key file named @file in the paths
  * specified in @search_dirs, loads the file into @key_file and
- * returns the file's full path in @full_path.  If the file could not
- * be loaded then an %error is set to either a #GFileError or
- * #GKeyFileError.
+ * returns the file's full path in @full_path.
+ *
+ * If the file could not be found in any of the @search_dirs,
+ * %G_KEY_FILE_ERROR_NOT_FOUND is returned. If
+ * the file is found but the OS returns an error when opening or reading the
+ * file, a %G_FILE_ERROR is returned. If there is a problem parsing the file, a
+ * %G_KEY_FILE_ERROR is returned.
  *
  * Returns: %TRUE if a key file could be loaded, %FALSE otherwise
  *
@@ -1197,7 +1206,7 @@ g_key_file_parse_line (GKeyFile     *key_file,
 				     &parse_error);
   else
     {
-      gchar *line_utf8 = g_utf8_make_valid (line);
+      gchar *line_utf8 = g_utf8_make_valid (line, length);
       g_set_error (error, G_KEY_FILE_ERROR,
                    G_KEY_FILE_ERROR_PARSE,
                    _("Key file contains line “%s” which is not "
@@ -1329,7 +1338,7 @@ g_key_file_parse_key_value_pair (GKeyFile     *key_file,
     {
       if (g_ascii_strcasecmp (value, "UTF-8") != 0)
         {
-	  gchar *value_utf8 = g_utf8_make_valid (value);
+	  gchar *value_utf8 = g_utf8_make_valid (value, value_len);
           g_set_error (error, G_KEY_FILE_ERROR,
                        G_KEY_FILE_ERROR_UNKNOWN_ENCODING,
                        _("Key file contains unsupported "
@@ -1862,7 +1871,7 @@ g_key_file_get_string (GKeyFile     *key_file,
 
   if (!g_utf8_validate (value, -1, NULL))
     {
-      gchar *value_utf8 = g_utf8_make_valid (value);
+      gchar *value_utf8 = g_utf8_make_valid (value, -1);
       g_set_error (error, G_KEY_FILE_ERROR,
                    G_KEY_FILE_ERROR_UNKNOWN_ENCODING,
                    _("Key file contains key “%s” with value “%s” "
@@ -1978,7 +1987,7 @@ g_key_file_get_string_list (GKeyFile     *key_file,
 
   if (!g_utf8_validate (value, -1, NULL))
     {
-      gchar *value_utf8 = g_utf8_make_valid (value);
+      gchar *value_utf8 = g_utf8_make_valid (value, -1);
       g_set_error (error, G_KEY_FILE_ERROR,
                    G_KEY_FILE_ERROR_UNKNOWN_ENCODING,
                    _("Key file contains key “%s” with value “%s” "
@@ -2543,7 +2552,8 @@ g_key_file_set_boolean_list (GKeyFile    *key_file,
  *
  * If @key cannot be found then 0 is returned and @error is set to
  * #G_KEY_FILE_ERROR_KEY_NOT_FOUND. Likewise, if the value associated
- * with @key cannot be interpreted as an integer then 0 is returned
+ * with @key cannot be interpreted as an integer, or is out of range
+ * for a #gint, then 0 is returned
  * and @error is set to #G_KEY_FILE_ERROR_INVALID_VALUE.
  *
  * Returns: the value associated with the key as an integer, or
@@ -2793,7 +2803,8 @@ g_key_file_set_uint64 (GKeyFile    *key_file,
  *
  * If @key cannot be found then %NULL is returned and @error is set to
  * #G_KEY_FILE_ERROR_KEY_NOT_FOUND. Likewise, if the values associated
- * with @key cannot be interpreted as integers then %NULL is returned
+ * with @key cannot be interpreted as integers, or are out of range for
+ * #gint, then %NULL is returned
  * and @error is set to #G_KEY_FILE_ERROR_INVALID_VALUE.
  *
  * Returns: (array length=length) (element-type gint) (transfer container):
@@ -4290,7 +4301,7 @@ g_key_file_parse_value_as_integer (GKeyFile     *key_file,
 
   if (*value == '\0' || (*eof_int != '\0' && !g_ascii_isspace(*eof_int)))
     {
-      gchar *value_utf8 = g_utf8_make_valid (value);
+      gchar *value_utf8 = g_utf8_make_valid (value, -1);
       g_set_error (error, G_KEY_FILE_ERROR,
 		   G_KEY_FILE_ERROR_INVALID_VALUE,
 		   _("Value “%s” cannot be interpreted "
@@ -4303,7 +4314,7 @@ g_key_file_parse_value_as_integer (GKeyFile     *key_file,
   int_value = long_value;
   if (int_value != long_value || errno == ERANGE)
     {
-      gchar *value_utf8 = g_utf8_make_valid (value);
+      gchar *value_utf8 = g_utf8_make_valid (value, -1);
       g_set_error (error,
 		   G_KEY_FILE_ERROR, 
 		   G_KEY_FILE_ERROR_INVALID_VALUE,
@@ -4337,7 +4348,7 @@ g_key_file_parse_value_as_double  (GKeyFile     *key_file,
 
   if (*end_of_valid_d != '\0' || end_of_valid_d == value)
     {
-      gchar *value_utf8 = g_utf8_make_valid (value);
+      gchar *value_utf8 = g_utf8_make_valid (value, -1);
       g_set_error (error, G_KEY_FILE_ERROR,
 		   G_KEY_FILE_ERROR_INVALID_VALUE,
 		   _("Value “%s” cannot be interpreted "
@@ -4376,7 +4387,7 @@ g_key_file_parse_value_as_boolean (GKeyFile     *key_file,
   else if (strcmp_sized (value, length, "false") == 0 || strcmp_sized (value, length, "0") == 0)
     return FALSE;
 
-  value_utf8 = g_utf8_make_valid (value);
+  value_utf8 = g_utf8_make_valid (value, -1);
   g_set_error (error, G_KEY_FILE_ERROR,
                G_KEY_FILE_ERROR_INVALID_VALUE,
                _("Value “%s” cannot be interpreted "
